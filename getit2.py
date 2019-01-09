@@ -23,50 +23,58 @@ def getModel():
     return [[m1, m2], [m3, m4]]
 
 
+def getMore(img, m):
+    res0 = cv.matchTemplate(img, m[0], cv.TM_CCOEFF_NORMED)
+    min_val0, max_val0, min_loc0, max_loc0 = cv.minMaxLoc(res0)
+
+    res1 = cv.matchTemplate(img, m[1], cv.TM_CCOEFF_NORMED)
+    min_val1, max_val1, min_loc1, max_loc1 = cv.minMaxLoc(res1)
+
+    if max_val0 > max_val1:
+        return max_val0, max_loc0, 0
+    else:
+        return max_val1, max_loc1, 1
+
+
 def getBest(img, m, q):
     max_val0 = 0
     max_val1 = 0
     img_t = img.copy()
-    flag1 = 0
-    flag2 = 0
 
-    while 1:
+    max_val_0, max_loc_0, flag_0 = getMore(img, m)
 
-        res0 = cv.matchTemplate(img, m[0], cv.TM_CCOEFF_NORMED)
-        min_val0, max_val0, min_loc0, max_loc0 = cv.minMaxLoc(res0)
-
-        res1 = cv.matchTemplate(img, m[1], cv.TM_CCOEFF_NORMED)
-        min_val1, max_val1, min_loc1, max_loc1 = cv.minMaxLoc(res1)
-
-        if max_val0 < 0.8 and max_val1 < 0.8 and not flag1:
-            flag1 = 1
-            if not q:
-                img = cv.resize(img, (855, 646), cv.INTER_CUBIC)
-            else:
-                img = cv.resize(img, (863, 647), cv.INTER_CUBIC)
-            continue
-        elif max_val0 < 0.8 and max_val1 < 0.8 and not flag2:
-            flag2 = 1
-            img = img_t.copy()
-            if not q:
-                img = cv.resize(img, (872, 656), cv.INTER_CUBIC)
-            else:
-                img = cv.resize(img, (876, 657), cv.INTER_CUBIC)
-            continue
-        elif max_val0 < 0.8 and max_val1 < 0.8:
-            print(max_val0)
-            print(max_val1)
-            return 0, 0, -1, img_t
-        else:
-            break
-
-    print(max_val0)
-    print(max_val1)
-
-    if max_val0 > max_val1:
-        return max_val0, max_loc0, 0, img
+    if not q:
+        img = cv.resize(img, (855, 646), cv.INTER_CUBIC)
     else:
-        return max_val1, max_loc1, 1, img
+        img = cv.resize(img, (863, 647), cv.INTER_CUBIC)
+
+    max_val_1, max_loc_1, flag_1 = getMore(img, m)
+
+    img1 = img_t.copy()
+    if not q:
+        img1 = cv.resize(img1, (872, 656), cv.INTER_CUBIC)
+    else:
+        img1 = cv.resize(img1, (876, 657), cv.INTER_CUBIC)
+
+    max_val_2, max_loc_2, flag_2 = getMore(img1, m)
+
+    print('    Flag:')
+    print('    0:%f' %(max_val_0))
+    print('    1:%f' %(max_val_1))
+    print('    2:%f' %(max_val_2))
+
+    list_val = [max_val_0, max_val_1, max_val_2]
+    list_loc = [max_loc_0, max_loc_1, max_loc_2]
+    list_flag = [flag_0, flag_1, flag_2]
+    list_img = [img_t, img, img1]
+    i = list_val.index(max(list_val))
+
+    print('    END:%f' %(list_val[i]))
+
+    if list_val[i] >= 0.75:
+        return list_val[i], list_loc[i], list_flag[i], list_img[i]
+    else:
+        return 0, 0, -1, img_t
 
 
 def getWhich(img, m):
