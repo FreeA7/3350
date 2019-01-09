@@ -2,15 +2,15 @@ import cv2 as cv
 import numpy as np
 import random
 
-from time import sleep
+import datetime
 
 
 def gaussianThreshold(img):
     gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
     binary = cv.adaptiveThreshold(
         gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 15, 10)
-    cv.namedWindow('GAUSSIAN', cv.WINDOW_AUTOSIZE)
-    cv.imshow('GAUSSIAN', binary)
+    # cv.namedWindow('GAUSSIAN', cv.WINDOW_AUTOSIZE)
+    # cv.imshow('GAUSSIAN', binary)
     return binary
 
 
@@ -289,7 +289,6 @@ def get1Target(img, tl, best):
         ptsx[i] = getMove(ptsx[i], -5, 1)
     img = getAllTarget(ptsx, img, 167, 1)
 
-
     ptsx = ptss.copy()
     ptsx = getUDMirror(ptsx, tl, 12)
     img = get1LR(ptsx, img, 501, 167)
@@ -319,17 +318,18 @@ def getCoordinate(img):
     if not flag:
         oimg = get1Target(oimg, tl, best)
 
-    cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
+    cv.namedWindow("match", cv.WINDOW_NORMAL)
     cv.imshow("match", oimg)
     return 1
 
 
-img = cv.imread('4.jpg')
-# size = img.shape
-# img = cv.resize(img, (872, 656), cv.INTER_CUBIC)  # 最亮
-# img = cv.resize(img, (855, 646), cv.INTER_CUBIC)  # 较亮
+img = cv.imread('./testp/1.jpg')
 
+start = datetime.datetime.now()
 getCoordinate(img)
+end = datetime.datetime.now()
+
+print('本次匹配费时%fs:'%(((end - start).microseconds)/1e6))
 
 cv.waitKey(0)
 cv.destroyAllWindows()
