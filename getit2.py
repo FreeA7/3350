@@ -124,7 +124,7 @@ def getMove(pts, gap, hov):
         return np.array([[i[0] + gap, i[1]] for i in pts])
 
 
-def getAllTarget(ptsx, img, gap, hov):
+def getAllTarget(ptsx, img, gap, hov, offset=0):
 
     # 获取ptsx原始拷贝
     ptss = ptsx.copy()
@@ -135,11 +135,17 @@ def getAllTarget(ptsx, img, gap, hov):
 
     # 是否改变方向，0为没有1为有
     changeFlag = 0
+    offset_num = 1
 
     while 1:
+
         # 整体移动ptsx
         for i in range(len(ptsx)):
-            ptsx[i] = getMove(ptsx[i], gap, hov)
+            ptsx[i] = getMove(ptsx[i], gap - offset_num // 6, hov)
+        if offset_num > 0:
+            offset_num += 1
+        elif offset_num < 0:
+            offset_num -= 1
 
         # 定义是否还有多边形存在点，0为没有1为有
         zeroFlag = 0
@@ -161,6 +167,8 @@ def getAllTarget(ptsx, img, gap, hov):
         elif not changeFlag:
             # 改变移动方向，ptss回归原始拷贝
             changeFlag = 1
+            if offset_num != 0:
+                offset_num = -1
             gap = (-1) * gap
             ptsx = ptss
             continue
@@ -170,47 +178,32 @@ def getAllTarget(ptsx, img, gap, hov):
     return img
 
 
-# def getAllTarget(ptsx, img, gap, hov):
-#     for pts in ptsx:
-#         ptss = [pts]
-#         downflag = 1
-#         changeFlag = 0
-#         while 1:
-#             temp = getMove(ptss[-1], gap, hov)
-#             if getZeroFlag(temp, img):
-#                 ptss.append(temp.copy())
-#             elif not changeFlag:
-#                 gap = (-1) * gap
-#                 temp = getMove(pts, gap, hov)
-#                 changeFlag = 1
-#                 ptss.append(temp.copy())
-#             elif changeFlag:
-#                 break
-#         for i in ptss:
-#             i = i.reshape(-1, 1, 2)
-#             img = cv.polylines(img, [i], True, getColor())
-#     return img
-
 
 def get1LR(ptsx, img, hgap, vgap):
+    ptss = ptsx.copy()
     for i in range(len(ptsx)):
         ptsx[i] = getMove(ptsx[i], hgap, 0)
     img = getAllTarget(ptsx, img, vgap, 1)
 
+    ptsx = ptss
+
     for i in range(len(ptsx)):
-        ptsx[i] = getMove(ptsx[i], (-1) * hgap * 2, 0)
+        ptsx[i] = getMove(ptsx[i], (-1) * hgap, 0)
     img = getAllTarget(ptsx, img, vgap, 1)
 
     return img
 
 
 def get1UD(ptsx, img, hgap, vgap):
+    ptss = ptsx.copy()
     for i in range(len(ptsx)):
         ptsx[i] = getMove(ptsx[i], vgap, 1)
     img = getAllTarget(ptsx, img, hgap, 0)
 
+    ptsx = ptss
+
     for i in range(len(ptsx)):
-        ptsx[i] = getMove(ptsx[i], (-1) * vgap * 2, 1)
+        ptsx[i] = getMove(ptsx[i], (-1) * vgap, 1)
     img = getAllTarget(ptsx, img, hgap, 0)
 
     return img
@@ -386,7 +379,7 @@ def get2Target(img, tl, best):
                           [tl[0] + 68, tl[1] + 278], [tl[0] + 68, tl[1] + 34]]))
 
     hgap = 85
-    vgap = 253
+    vgap = 252
     ptss = ptsx.copy()
     img = getAllTarget(ptsx, img, hgap, 0)
     ptsx = ptss.copy()
@@ -443,17 +436,24 @@ def listdir(path):
     return list_name
 
 
-# img = cv.imread('./picture/q2/3300_TA881843BQ_TAAOL7C0_1_-191.126_-264.548__S_20180822_063225.jpg')
+
 # start = datetime.datetime.now()
-# # getCoordinate(img)
+# getCoordinate(cv.imread('./testp/tp/3300_TA881211CE_TAAOLEC0_34_-232.385_-138.598__S_20180816_094924.jpg'))
 # end = datetime.datetime.now()
-for i in listdir('./testp/tp'):
+# print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+
+for i in listdir('./testp/tp/q2/'):
+    start = datetime.datetime.now()
     getCoordinate(cv.imread(i))
+    end = datetime.datetime.now()
+    print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
     cv.waitKey(0)
     cv.destroyAllWindows()
 
 
-# print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+
+
+
 
 cv.waitKey(0)
 cv.destroyAllWindows()
