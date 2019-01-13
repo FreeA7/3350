@@ -7,6 +7,7 @@ import datetime
 
 
 def gaussianThreshold(img):
+    # 图片进行二值化
     gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
     binary = cv.adaptiveThreshold(
         gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 15, 10)
@@ -16,6 +17,7 @@ def gaussianThreshold(img):
 
 
 def getModel():
+    # 获取模板，返回为一个[q1问题的模板list, q2问题的模板list]
     m1 = cv.imread('./feature/q1/feature5.jpg', cv.IMREAD_GRAYSCALE)
     m2 = cv.imread('./feature/q1/feature6.jpg', cv.IMREAD_GRAYSCALE)
     m3 = cv.imread('./feature/q2/feature3.jpg', cv.IMREAD_GRAYSCALE)
@@ -24,6 +26,7 @@ def getModel():
 
 
 def getMore(img, m):
+    # 对目标图片进行所有模板的匹配，返回匹配效果最好的模板以及最大值与位置
     res0 = cv.matchTemplate(img, m[0], cv.TM_CCOEFF_NORMED)
     min_val0, max_val0, min_loc0, max_loc0 = cv.minMaxLoc(res0)
 
@@ -37,8 +40,11 @@ def getMore(img, m):
 
 
 def getBest(img, m, q):
-    max_val0 = 0
-    max_val1 = 0
+    ''' 对目标图片依次进行q1和q2的匹配，
+        其中每次匹配都会依次匹配三种不同的分辨率，
+        然后得出2x3次匹配中val最大的值
+        如果最好val的匹配大于0.75则返回，否则输出error
+    '''
     img_t = img.copy()
 
     max_val_0, max_loc_0, flag_0 = getMore(img, m)
@@ -59,9 +65,9 @@ def getBest(img, m, q):
     max_val_2, max_loc_2, flag_2 = getMore(img1, m)
 
     print('    Flag:')
-    print('    0:%f' %(max_val_0))
-    print('    1:%f' %(max_val_1))
-    print('    2:%f' %(max_val_2))
+    print('    0:%f' % (max_val_0))
+    print('    1:%f' % (max_val_1))
+    print('    2:%f' % (max_val_2))
 
     list_val = [max_val_0, max_val_1, max_val_2]
     list_loc = [max_loc_0, max_loc_1, max_loc_2]
@@ -69,7 +75,7 @@ def getBest(img, m, q):
     list_img = [img_t, img, img1]
     i = list_val.index(max(list_val))
 
-    print('    END:%f' %(list_val[i]))
+    print('    END:%f' % (list_val[i]))
 
     if list_val[i] >= 0.75:
         return list_val[i], list_loc[i], list_flag[i], list_img[i]
@@ -78,6 +84,7 @@ def getBest(img, m, q):
 
 
 def getWhich(img, m):
+    # 获取目标图片的最好匹配val和位置loc，以及所符合的问题是q1还是q2
     max_val, max_loc, best, img = getBest(img, m[0], 0)
     flag = 0
     if max_val == 0:
@@ -85,14 +92,17 @@ def getWhich(img, m):
         flag = 1
         if max_val == 0:
             return 0, 0, -1, -1, img
+    # flag是指问题是q1还是q2，best是指匹配的最好的模板是这个问题的哪一个模板
     return max_val, max_loc, flag, best, img
 
 
 def getColor():
+    # 画图的时候随机返回一个颜色
     return (random.randint(1, 255), random.randint(1, 255), random.randint(1, 255))
 
 
 def getUDMirror(ptsx, tl, loc):
+    # 将列表中的多边形统一以一个水平轴进行对称
     for i in range(len(ptsx)):
         ptsx[i] = np.array(
             [[j[0], ((tl[1] + loc) + ((tl[1] + loc) - j[1]))] for j in ptsx[i]])
@@ -100,6 +110,7 @@ def getUDMirror(ptsx, tl, loc):
 
 
 def getLRMirror(ptsx, tl, loc):
+    # 将列表中的多边形统一以一个垂直轴进行对称
     for i in range(len(ptsx)):
         ptsx[i] = np.array(
             [[((tl[0] + loc) + ((tl[0] + loc) - j[0])), j[1]] for j in ptsx[i]])
@@ -107,6 +118,7 @@ def getLRMirror(ptsx, tl, loc):
 
 
 def getZeroFlag(pts, img):
+    # 判断这个多边形是否有任何一个顶点是在图片的像素范围之内
     flag = 0
     h = img.shape[0]
     w = img.shape[1]
@@ -118,6 +130,7 @@ def getZeroFlag(pts, img):
 
 
 def getMove(pts, gap, hov):
+    # 将列表中的多边形统一向水平或者垂直方向移动gap
     if hov:
         return np.array([[i[0], i[1] + gap] for i in pts])
     else:
@@ -125,6 +138,18 @@ def getMove(pts, gap, hov):
 
 
 def getAllTarget(ptsx, img, gap, hov, offset=0):
+    ''' 获取一个多边形list的一个方向（横向或者纵向）上的所有有点的拷贝
+        ---------------------------                ---------------------------
+        |                         |                |                         |
+        |                         |                |                         |
+        |                         |                |                         |
+        |           |-|           |       -->      ||-||-||-||-||-||-||-||-| |
+        |                         |                |                         |
+        |                         |                |                         |
+        |                         |                |                         |
+        |                         |                |                         |
+        ---------------------------                ---------------------------
+    '''
 
     # 获取ptsx原始拷贝
     ptss = ptsx.copy()
@@ -135,6 +160,8 @@ def getAllTarget(ptsx, img, gap, hov, offset=0):
 
     # 是否改变方向，0为没有1为有
     changeFlag = 0
+
+    # 偏移修正系数
     offset_num = 1
 
     while 1:
@@ -178,8 +205,19 @@ def getAllTarget(ptsx, img, gap, hov, offset=0):
     return img
 
 
-
 def get1LR(ptsx, img, hgap, vgap):
+    ''' 获取一个多边形list左右一定gap的上下所有多边形
+        ---------------------------                ---------------------------
+        |                         |                |   |-|               |-| |
+        |                         |                |   |-|               |-| |
+        |                         |                |   |-|               |-| |
+        |           |-|           |       -->      |   |-| hgap |-| hgap |-| |
+        |                         |                |   |-|               |-| |
+        |                         |                |   |-|               |-| |
+        |                         |                |   |-|               |-| |
+        |                         |                |   |-|               |-| |
+        ---------------------------                ---------------------------
+    '''
     ptss = ptsx.copy()
     for i in range(len(ptsx)):
         ptsx[i] = getMove(ptsx[i], hgap, 0)
@@ -195,6 +233,18 @@ def get1LR(ptsx, img, hgap, vgap):
 
 
 def get1UD(ptsx, img, hgap, vgap):
+    ''' 获取一个多边形list上下一定gap的左右所有多边形
+        --------------------------                 --------------------------
+        |                        |                 |                        |
+        |                        |                 ||-||-||-||-||-||-||-||-|| 
+        |                        |                 |            vgap        |
+        |           |-|          |        -->      |            |-|         |
+        |                        |                 |            vgap        |
+        |                        |                 ||-||-||-||-||-||-||-||-|| 
+        |                        |                 |                        | 
+        |                        |                 |                        | 
+        --------------------------                 --------------------------
+    '''
     ptss = ptsx.copy()
     for i in range(len(ptsx)):
         ptsx[i] = getMove(ptsx[i], vgap, 1)
@@ -210,6 +260,7 @@ def get1UD(ptsx, img, hgap, vgap):
 
 
 def get1Target(img, tl, best):
+    # 获取所有q1问题的多边形标注
     ptsx = []
     if not best:
         tl = [tl[0] - 503, tl[1] + 62]
@@ -308,26 +359,31 @@ def get1Target(img, tl, best):
     # Main
     ptsx.append(np.array([[tl[0] + 26, tl[1] - 60], [tl[0] + 26, tl[1] + 84],
                           [tl[0] + 318, tl[1] + 84], [tl[0] + 318, tl[1] - 60]]))
-
+    '''
+      变换思路：
+      1.获取所有纵向图像
+      2.获取横向2h距离的所有纵向图像
+      3.原始图像进行上下对称
+      4.获取对称图像横向h距离的所有纵向图像
+    '''
     hgap = 501
     vgap = 167
     ptsx = np.array(ptsx)
     ptss = ptsx.copy()
     img = getAllTarget(ptsx, img, vgap, 1)
 
-    for i in range(len(ptsx)):
-        ptsx[i] = getMove(ptsx[i], hgap * 2, 0)
-        ptsx[i] = getMove(ptsx[i], -5, 1)
-    img = getAllTarget(ptsx, img, vgap, 1)
-
     ptsx = ptss.copy()
-    ptsx = getUDMirror(ptsx, tl, 12)
+    img = get1LR(ptsx, img, 2 * hgap, vgap)
+
+    ptsx = getUDMirror(ptss, tl, 12)
+
     img = get1LR(ptsx, img, hgap, vgap)
 
     return img
 
 
 def get2Target(img, tl, best):
+    # 获取所有q2问题的多边形标注
     ptsx = []
 
     # M1-1
@@ -380,61 +436,75 @@ def get2Target(img, tl, best):
 
     hgap = 85
     vgap = 252
+    '''
+      变换思路：
+      1.获取所有横向图像
+      2.获取纵向2v距离的所有横向图像
+      3.原始图像进行左右对称
+      4.获取对称图像纵向v距离的所有横向图像
+    '''
     ptss = ptsx.copy()
     img = getAllTarget(ptsx, img, hgap, 0)
     ptsx = ptss.copy()
-    ptsx = getLRMirror(ptsx, tl, 32)
-    # img = getAllTarget(ptsx, img, 84, 0)
-    img = get1UD(ptsx, img, hgap, vgap)
-    ptsx = ptss.copy()
     img = get1UD(ptsx, img, hgap, vgap * 2)
-
+    ptsx = getLRMirror(ptss, tl, 32)
+    img = get1UD(ptsx, img, hgap, vgap)
+    
     return img
 
 
 def getCoordinate(img):
+    # 获取图像的所有零件位置
+
+    # 1、保存原始未处理图像便于画图
     oimg = img.copy()
 
+    # 2、或者模板并对图像进行二值化处理
     m = getModel()
     img = gaussianThreshold(img)
 
     print('进行匹配：')
-
+    # 3、获取是q1还是q2问题以及最好匹配位置
     max_val, max_loc, flag, best, img = getWhich(img, m)
+
+    # 4、如果二值化的图片有过拉伸处理这里对要进行画图的原图也进行同样的处理
     oimg = cv.resize(oimg, (img.shape[1], img.shape[0]), cv.INTER_CUBIC)
 
+    # return 没有一个大于0.75的匹配
     if flag == -1:
         print('Error')
         cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
         cv.imshow("match", oimg)
         return 0
 
+    # 5、获取最佳位置以及模板大小，并把最佳匹配在图中画出来
     th, tw = m[flag][0].shape[:2]
     tl = max_loc
-
     br = (tl[0] + tw, tl[1] + th)
     cv.rectangle(oimg, tl, br, (0, 0, 255), 1)
 
+    # 6、根据q1还是q2获取所有零件位置并在图中画出来
     if not flag:
         oimg = get1Target(oimg, tl, best)
     else:
         oimg = get2Target(oimg, tl, best)
 
+    # 7、图片的展示
     cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
     cv.imshow("match", oimg)
     return 1
 
 
 def listdir(path):
+    # 返回一个文件夹下所有jpg文件名
     list_name = []
     for file in os.listdir(path):
         file_path = os.path.join(path, file)
         if os.path.isdir(file_path):
             listdir(file_path, list_name)
-        else:
+        elif file[-3:].lower() == 'jpg':
             list_name.append(file_path)
     return list_name
-
 
 
 # start = datetime.datetime.now()
@@ -442,21 +512,17 @@ def listdir(path):
 # end = datetime.datetime.now()
 # print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
 
-for i in listdir('./testp/tp/q2/'):
-    start = datetime.datetime.now()
-    getCoordinate(cv.imread(i))
-    end = datetime.datetime.now()
-    print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+def main():
+    for i in listdir('./testp/tp/q/'):
+        start = datetime.datetime.now()
+        getCoordinate(cv.imread(i))
+        end = datetime.datetime.now()
+        print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+        
     cv.waitKey(0)
     cv.destroyAllWindows()
-
-
-
-
-
-
-cv.waitKey(0)
-cv.destroyAllWindows()
 
 '''
 三种亮度由暗到亮分为0,1,2
@@ -504,3 +570,6 @@ w2->w0:1.13618677
 h2->h0:1.13953488
 
 '''
+
+if __name__ == '__main__':
+    main()
