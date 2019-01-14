@@ -453,7 +453,7 @@ def get2Target(img, tl, best):
     return img
 
 
-def getCoordinate(img):
+def getCoordinate(img, getimg = 0):
     # 获取图像的所有零件位置
 
     # 1、保存原始未处理图像便于画图
@@ -473,9 +473,12 @@ def getCoordinate(img):
     # return 没有一个大于0.75的匹配
     if flag == -1:
         print('Error')
-        cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
-        cv.imshow("match", oimg)
-        return 0
+        if not getimg:
+            cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
+            cv.imshow("match", oimg)
+            return 0
+        else:
+            return [0, oimg]
 
     # 5、获取最佳位置以及模板大小，并把最佳匹配在图中画出来
     th, tw = m[flag][0].shape[:2]
@@ -489,20 +492,21 @@ def getCoordinate(img):
     else:
         oimg = get2Target(oimg, tl, best)
 
-    # 7、图片的展示
-    cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
-    cv.imshow("match", oimg)
-    return 1
+    # 7、图片的展示和返回
+    if not getimg:
+        cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
+        cv.imshow("match", oimg)
+        return 1
+    else:
+        return [1, oimg]
 
 
-def listdir(path):
+def getJPG(path):
     # 返回一个文件夹下所有jpg文件名
     list_name = []
     for file in os.listdir(path):
         file_path = os.path.join(path, file)
-        if os.path.isdir(file_path):
-            listdir(file_path, list_name)
-        elif file[-3:].lower() == 'jpg':
+        if file[-3:].lower() == 'jpg' and not os.path.isdir(file_path):
             list_name.append(file_path)
     return list_name
 
@@ -513,7 +517,7 @@ def listdir(path):
 # print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
 
 def main():
-    for i in listdir('./testp/tp/q/'):
+    for i in getJPG('./testp/tp/q1/'):
         start = datetime.datetime.now()
         getCoordinate(cv.imread(i))
         end = datetime.datetime.now()
