@@ -103,17 +103,17 @@ def getColor():
 
 def getUDMirror(ptsx, tl, loc):
     # 将列表中的多边形统一以一个水平轴进行对称
-    for i in range(len(ptsx)):
-        ptsx[i] = np.array(
-            [[j[0], ((tl[1] + loc) + ((tl[1] + loc) - j[1]))] for j in ptsx[i]])
+    for key in ptsx.keys():
+        ptsx[key] = np.array(
+            [[j[0], ((tl[1] + loc) + ((tl[1] + loc) - j[1]))] for j in ptsx[key]])
     return ptsx
 
 
 def getLRMirror(ptsx, tl, loc):
     # 将列表中的多边形统一以一个垂直轴进行对称
-    for i in range(len(ptsx)):
-        ptsx[i] = np.array(
-            [[((tl[0] + loc) + ((tl[0] + loc) - j[0])), j[1]] for j in ptsx[i]])
+    for key in ptsx.keys():
+        ptsx[key] = np.array(
+            [[((tl[0] + loc) + ((tl[0] + loc) - j[0])), j[1]] for j in ptsx[key]])
     return ptsx
 
 
@@ -137,7 +137,7 @@ def getMove(pts, gap, hov):
         return np.array([[i[0] + gap, i[1]] for i in pts])
 
 
-def getAllTarget(ptsx, img, gap, hov, offset=0):
+def getAllTarget(ptsx, img, gap, hov, ptdic, offset=0):
     ''' 获取一个多边形list的一个方向（横向或者纵向）上的所有有点的拷贝
         ---------------------------                ---------------------------
         |                         |                |                         |
@@ -154,7 +154,10 @@ def getAllTarget(ptsx, img, gap, hov, offset=0):
     # 获取ptsx原始拷贝
     ptss = ptsx.copy()
 
-    for pts in ptsx:
+    # 画出初始图像
+    for key in ptsx.keys():
+        pts = ptsx[key]
+        ptdic[key].append(pts.copy())
         pts = pts.reshape(-1, 1, 2)
         img = cv.polylines(img, [pts], True, (0, 255, 0))
 
@@ -167,8 +170,8 @@ def getAllTarget(ptsx, img, gap, hov, offset=0):
     while 1:
 
         # 整体移动ptsx
-        for i in range(len(ptsx)):
-            ptsx[i] = getMove(ptsx[i], gap - offset_num // 6, hov)
+        for key in ptsx.keys():
+            ptsx[key] = getMove(ptsx[key], gap - offset_num // 6, hov)
         if offset_num > 0:
             offset_num += 1
         elif offset_num < 0:
@@ -178,10 +181,10 @@ def getAllTarget(ptsx, img, gap, hov, offset=0):
         zeroFlag = 0
 
         # 逐个多边形进行判断并绘点
-        for i in range(len(ptsx)):
+        for key in ptsx.keys():
             # 判断这个多边形是否有点
-            if getZeroFlag(ptsx[i], img):
-                pts = ptsx[i]
+            if getZeroFlag(ptsx[key], img):
+                pts = ptsx[key]
                 pts = pts.reshape(-1, 1, 2)
                 img = cv.polylines(img, [pts], True, (255, 0, 0))
                 # 只要有一个多边形有点就可以继续移动
@@ -189,6 +192,8 @@ def getAllTarget(ptsx, img, gap, hov, offset=0):
 
         # 绘点结束，判断是否要进行下一次移动，如果任何多边形有点则继续移动
         if zeroFlag:
+            for key in ptsx.keys():
+                ptdic[key].append(ptsx[key].copy())
             continue
         # 所有多边形没点，并且还未改变过移动方向
         elif not changeFlag:
@@ -205,7 +210,7 @@ def getAllTarget(ptsx, img, gap, hov, offset=0):
     return img
 
 
-def get1LR(ptsx, img, hgap, vgap):
+def get1LR(ptsx, img, hgap, vgap, ptdic):
     ''' 获取一个多边形list左右一定gap的上下所有多边形
         ---------------------------                ---------------------------
         |                         |                |   |-|               |-| |
@@ -219,20 +224,20 @@ def get1LR(ptsx, img, hgap, vgap):
         ---------------------------                ---------------------------
     '''
     ptss = ptsx.copy()
-    for i in range(len(ptsx)):
-        ptsx[i] = getMove(ptsx[i], hgap, 0)
-    img = getAllTarget(ptsx, img, vgap, 1)
+    for key in ptsx.keys():
+        ptsx[key] = getMove(ptsx[key], hgap, 0)
+    img = getAllTarget(ptsx, img, vgap, 1, ptdic)
 
     ptsx = ptss
 
-    for i in range(len(ptsx)):
-        ptsx[i] = getMove(ptsx[i], (-1) * hgap, 0)
-    img = getAllTarget(ptsx, img, vgap, 1)
+    for key in ptsx.keys():
+        ptsx[key] = getMove(ptsx[key], (-1) * hgap, 0)
+    img = getAllTarget(ptsx, img, vgap, 1, ptdic)
 
     return img
 
 
-def get1UD(ptsx, img, hgap, vgap):
+def get1UD(ptsx, img, hgap, vgap, ptdic):
     ''' 获取一个多边形list上下一定gap的左右所有多边形
         --------------------------                 --------------------------
         |                        |                 |                        |
@@ -246,119 +251,136 @@ def get1UD(ptsx, img, hgap, vgap):
         --------------------------                 --------------------------
     '''
     ptss = ptsx.copy()
-    for i in range(len(ptsx)):
-        ptsx[i] = getMove(ptsx[i], vgap, 1)
-    img = getAllTarget(ptsx, img, hgap, 0)
+    for key in ptsx.keys():
+        ptsx[key] = getMove(ptsx[key], vgap, 1)
+    img = getAllTarget(ptsx, img, hgap, 0, ptdic)
 
     ptsx = ptss
 
-    for i in range(len(ptsx)):
-        ptsx[i] = getMove(ptsx[i], (-1) * vgap, 1)
-    img = getAllTarget(ptsx, img, hgap, 0)
+    for key in ptsx.keys():
+        ptsx[key] = getMove(ptsx[key], (-1) * vgap, 1)
+    img = getAllTarget(ptsx, img, hgap, 0, ptdic)
 
     return img
 
 
 def get1Target(img, tl, best):
     # 获取所有q1问题的多边形标注
-    ptsx = []
+    ptsx = {}
     if not best:
         tl = [tl[0] - 503, tl[1] + 62]
 
-    # M1-4
-    ptsx.append(np.array([[tl[0] + 133, tl[1] + 12], [tl[0] + 146, tl[1]],
-                          [tl[0] + 158, tl[1] + 9], [tl[0] + 313, tl[1] + 9],
-                          [tl[0] + 318, tl[1] + 18], [tl[0] + 318, tl[1] + 26],
-                          [tl[0] + 308, tl[1] + 16], [tl[0] + 158, tl[1] + 14],
-                          [tl[0] + 145, tl[1] + 26]]))
+    ptdic = {}
 
-    # # M1-3
-    ptsx.append(np.array([[tl[0] + 318, tl[1] + 20], [tl[0] + 338, tl[1] + 20],
-                          [tl[0] + 338, tl[1] + 89], [tl[0] + 318, tl[1] + 89]]))
+    # M1-4
+    ptdic['M1-4'] = []
+    ptsx['M1-4'] = np.array([[tl[0] + 133, tl[1] + 12], [tl[0] + 146, tl[1]],
+                             [tl[0] + 158, tl[1] + 9], [tl[0] + 313, tl[1] + 9],
+                             [tl[0] + 318, tl[1] + 18], [tl[0] + 318, tl[1] + 26],
+                             [tl[0] + 308, tl[1] + 16], [tl[0] + 158, tl[1] + 14],
+                             [tl[0] + 145, tl[1] + 26]])
+
+    # M1-3
+    ptdic['M1-3'] = []
+    ptsx['M1-3'] = np.array([[tl[0] + 318, tl[1] + 20], [tl[0] + 338, tl[1] + 20],
+                             [tl[0] + 338, tl[1] + 89], [tl[0] + 318, tl[1] + 89]])
 
     # M1-2
-    ptsx.append(np.array([[tl[0] + 326, tl[1] - 39], [tl[0] + 354, tl[1] - 39],
-                          [tl[0] + 354, tl[1] - 68], [tl[0] + 360, tl[1] - 68],
-                          [tl[0] + 360, tl[1] - 13], [tl[0] + 381, tl[1] - 13],
-                          [tl[0] + 381, tl[1] + 8], [tl[0] + 386, tl[1] + 14],
-                          [tl[0] + 386, tl[1] + 29], [tl[0] + 363, tl[1] + 29],
-                          [tl[0] + 363, tl[1] + 67], [tl[0] + 389, tl[1] + 67],
-                          [tl[0] + 389, tl[1] + 86], [tl[0] + 347, tl[1] + 86],
-                          [tl[0] + 347, tl[1] + 13], [tl[0] + 326, tl[1] + 13]]))
+    ptdic['M1-2'] = []
+    ptsx['M1-2'] = np.array([[tl[0] + 326, tl[1] - 39], [tl[0] + 354, tl[1] - 39],
+                             [tl[0] + 354, tl[1] - 68], [tl[0] + 360, tl[1] - 68],
+                             [tl[0] + 360, tl[1] - 13], [tl[0] + 381, tl[1] - 13],
+                             [tl[0] + 381, tl[1] + 8], [tl[0] + 386, tl[1] + 14],
+                             [tl[0] + 386, tl[1] + 29], [tl[0] + 363, tl[1] + 29],
+                             [tl[0] + 363, tl[1] + 67], [tl[0] + 389, tl[1] + 67],
+                             [tl[0] + 389, tl[1] + 86], [tl[0] + 347, tl[1] + 86],
+                             [tl[0] + 347, tl[1] + 13], [tl[0] + 326, tl[1] + 13]])
 
     # M1-1-1
-    ptsx.append(np.array([[tl[0] + 364, tl[1] - 27], [tl[0] + 371, tl[1] - 33],
-                          [tl[0] + 371, tl[1] - 65], [tl[0] + 404, tl[1] - 65],
-                          [tl[0] + 404, tl[1] + 90], [tl[0] + 392, tl[1] + 90],
-                          [tl[0] + 392, tl[1] + 38], [tl[0] + 386, tl[1] + 35],
-                          [tl[0] + 386, tl[1] + 14], [tl[0] + 381, tl[1] + 8],
-                          [tl[0] + 381, tl[1] - 13], [tl[0] + 364, tl[1] - 13]]))
+    ptdic['M1-1-1'] = []
+    ptsx['M1-1-1'] = np.array([[tl[0] + 364, tl[1] - 27], [tl[0] + 371, tl[1] - 33],
+                               [tl[0] + 371, tl[1] - 65], [tl[0] + 404, tl[1] - 65],
+                               [tl[0] + 404, tl[1] + 90], [tl[0] + 392, tl[1] + 90],
+                               [tl[0] + 392, tl[1] + 38], [tl[0] + 386, tl[1] + 35],
+                               [tl[0] + 386, tl[1] + 14], [tl[0] + 381, tl[1] + 8],
+                               [tl[0] + 381, tl[1] - 13], [tl[0] + 364, tl[1] - 13]])
 
     # M1-1-2
-    ptsx.append(np.array([[tl[0] + 314, tl[1] - 66], [tl[0] + 314, tl[1] - 58],
-                          [tl[0] + 27, tl[1] - 58], [tl[0] + 24, tl[1] - 56],
-                          [tl[0] + 24, tl[1] + 74], [tl[0] + 32, tl[1] + 83],
-                          [tl[0] + 223, tl[1] + 83], [tl[0] + 225, tl[1] + 79],
-                          [tl[0] + 229, tl[1] + 76], [tl[0] + 238, tl[1] + 76],
-                          [tl[0] + 242, tl[1] + 80], [tl[0] + 245, tl[1] + 83],
-                          [tl[0] + 314, tl[1] + 83], [tl[0] + 314, tl[1] + 90],
-                          [tl[0] + 21, tl[1] + 90], [tl[0] + 21, tl[1] - 66]]))
+    ptdic['M1-1-2'] = []
+    ptsx['M1-1-2'] = np.array([[tl[0] + 314, tl[1] - 66], [tl[0] + 314, tl[1] - 58],
+                               [tl[0] + 27, tl[1] - 58], [tl[0] + 24, tl[1] - 56],
+                               [tl[0] + 24, tl[1] + 74], [tl[0] + 32, tl[1] + 83],
+                               [tl[0] + 223, tl[1] + 83], [tl[0] + 225, tl[1] + 79],
+                               [tl[0] + 229, tl[1] + 76], [tl[0] + 238, tl[1] + 76],
+                               [tl[0] + 242, tl[1] + 80], [tl[0] + 245, tl[1] + 83],
+                               [tl[0] + 314, tl[1] + 83], [tl[0] + 314, tl[1] + 90],
+                               [tl[0] + 21, tl[1] + 90], [tl[0] + 21, tl[1] - 66]])
 
     # M1-1-3
-    ptsx.append(np.array([[tl[0] + 21, tl[1] + 90], [tl[0] + 21, tl[1] - 66],
-                          [tl[0] - 97, tl[1] - 66], [tl[0] - 97, tl[1] - 58],
-                          [tl[0] + 17, tl[1] - 58], [tl[0] + 17, tl[1] + 74],
-                          [tl[0] + 10, tl[1] + 83], [tl[0] - 97, tl[1] + 83],
-                          [tl[0] - 97, tl[1] + 90]]))
+    ptdic['M1-1-3'] = []
+    ptsx['M1-1-3'] = np.array([[tl[0] + 21, tl[1] + 90], [tl[0] + 21, tl[1] - 66],
+                               [tl[0] - 97, tl[1] - 66], [tl[0] - 97, tl[1] - 58],
+                               [tl[0] + 17, tl[1] - 58], [tl[0] + 17, tl[1] + 74],
+                               [tl[0] + 10, tl[1] + 83], [tl[0] - 97, tl[1] + 83],
+                               [tl[0] - 97, tl[1] + 90]])
 
     # M2-1
-    ptsx.append(np.array([[tl[0] + 328, tl[1] + 1], [tl[0] + 328, tl[1] - 14],
-                          [tl[0] + 331, tl[1] - 18], [tl[0] + 328, tl[1] - 21],
-                          [tl[0] + 328, tl[1] - 33], [tl[0] + 336, tl[1] - 33],
-                          [tl[0] + 336, tl[1] - 26], [tl[0] + 340, tl[1] - 23],
-                          [tl[0] + 344, tl[1] - 26], [tl[0] + 344, tl[1] - 33],
-                          [tl[0] + 355, tl[1] - 33], [tl[0] + 360, tl[1] - 38],
-                          [tl[0] + 360, tl[1] - 67], [tl[0] + 21, tl[1] - 67],
-                          [tl[0] + 21, tl[1] - 79], [tl[0] + 520, tl[1] - 79],
-                          [tl[0] + 520, tl[1] - 67], [tl[0] + 368, tl[1] - 67],
-                          [tl[0] + 368, tl[1] - 34], [tl[0] + 355, tl[1] - 26],
-                          [tl[0] + 350, tl[1] - 26], [tl[0] + 350, tl[1] - 21],
-                          [tl[0] + 347, tl[1] - 18], [tl[0] + 350, tl[1] - 13],
-                          [tl[0] + 350, tl[1] + 1], [tl[0] + 344, tl[1] + 1],
-                          [tl[0] + 344, tl[1] - 11], [tl[0] + 340, tl[1] - 13],
-                          [tl[0] + 336, tl[1] - 10], [tl[0] + 336, tl[1] + 1]]))
+    ptdic['M2-1'] = []
+    ptsx['M2-1'] = np.array([[tl[0] + 328, tl[1] + 1], [tl[0] + 328, tl[1] - 14],
+                             [tl[0] + 331, tl[1] - 18], [tl[0] + 328, tl[1] - 21],
+                             [tl[0] + 328, tl[1] - 33], [tl[0] + 336, tl[1] - 33],
+                             [tl[0] + 336, tl[1] - 26], [tl[0] + 340, tl[1] - 23],
+                             [tl[0] + 344, tl[1] - 26], [tl[0] + 344, tl[1] - 33],
+                             [tl[0] + 355, tl[1] - 33], [tl[0] + 360, tl[1] - 38],
+                             [tl[0] + 360, tl[1] - 67], [tl[0] + 21, tl[1] - 67],
+                             [tl[0] + 21, tl[1] - 79], [tl[0] + 520, tl[1] - 79],
+                             [tl[0] + 520, tl[1] - 67], [tl[0] + 368, tl[1] - 67],
+                             [tl[0] + 368, tl[1] - 34], [tl[0] + 355, tl[1] - 26],
+                             [tl[0] + 350, tl[1] - 26], [tl[0] + 350, tl[1] - 21],
+                             [tl[0] + 347, tl[1] - 18], [tl[0] + 350, tl[1] - 13],
+                             [tl[0] + 350, tl[1] + 1], [tl[0] + 344, tl[1] + 1],
+                             [tl[0] + 344, tl[1] - 11], [tl[0] + 340, tl[1] - 13],
+                             [tl[0] + 336, tl[1] - 10], [tl[0] + 336, tl[1] + 1]])
 
     # M2-2
-    ptsx.append(np.array([[tl[0] + 358, tl[1] - 12], [tl[0] + 380, tl[1] - 12],
-                          [tl[0] + 380, tl[1] + 11], [tl[0] + 375, tl[1] + 11],
-                          [tl[0] + 375, tl[1] + 40], [tl[0] + 387, tl[1] + 40],
-                          [tl[0] + 387, tl[1] + 61], [tl[0] + 364, tl[1] + 61],
-                          [tl[0] + 364, tl[1] + 37], [tl[0] + 366, tl[1] + 37],
-                          [tl[0] + 366, tl[1] + 34], [tl[0] + 361, tl[1] + 34],
-                          [tl[0] + 361, tl[1] + 17], [tl[0] + 366, tl[1] + 17],
-                          [tl[0] + 366, tl[1] + 10], [tl[0] + 358, tl[1] + 10]]))
+    ptdic['M2-2'] = []
+    ptsx['M2-2'] = np.array([[tl[0] + 358, tl[1] - 12], [tl[0] + 380, tl[1] - 12],
+                             [tl[0] + 380, tl[1] + 11], [tl[0] + 375, tl[1] + 11],
+                             [tl[0] + 375, tl[1] + 40], [tl[0] + 387, tl[1] + 40],
+                             [tl[0] + 387, tl[1] + 61], [tl[0] + 364, tl[1] + 61],
+                             [tl[0] + 364, tl[1] + 37], [tl[0] + 366, tl[1] + 37],
+                             [tl[0] + 366, tl[1] + 34], [tl[0] + 361, tl[1] + 34],
+                             [tl[0] + 361, tl[1] + 17], [tl[0] + 366, tl[1] + 17],
+                             [tl[0] + 366, tl[1] + 10], [tl[0] + 358, tl[1] + 10]])
 
     # M2-3-1
-    ptsx.append(np.array([[tl[0] + 318, tl[1] - 64], [tl[0] + 339, tl[1] - 64],
-                          [tl[0] + 339, tl[1] - 51], [tl[0] + 344, tl[1] - 46],
-                          [tl[0] + 344, tl[1] - 26], [tl[0] + 340, tl[1] - 23],
-                          [tl[0] + 336, tl[1] - 26], [tl[0] + 336, tl[1] - 42],
-                          [tl[0] + 318, tl[1] - 42]]))
+    ptdic['M2-3-1'] = []
+    ptsx['M2-3-1'] = np.array([[tl[0] + 318, tl[1] - 64], [tl[0] + 339, tl[1] - 64],
+                               [tl[0] + 339, tl[1] - 51], [tl[0] + 344, tl[1] - 46],
+                               [tl[0] + 344, tl[1] - 26], [tl[0] + 340, tl[1] - 23],
+                               [tl[0] + 336, tl[1] - 26], [tl[0] + 336, tl[1] - 42],
+                               [tl[0] + 318, tl[1] - 42]])
 
     # M2-3-2
-    ptsx.append(np.array([[tl[0] + 344, tl[1] - 11], [tl[0] + 340, tl[1] - 13],
-                          [tl[0] + 336, tl[1] - 10], [tl[0] + 336, tl[1] + 12],
-                          [tl[0] + 331, tl[1] + 18], [tl[0] + 318, tl[1] + 18],
-                          [tl[0] + 318, tl[1] + 39], [tl[0] + 339, tl[1] + 39],
-                          [tl[0] + 339, tl[1] + 23], [tl[0] + 344, tl[1] + 14]]))
+    ptdic['M2-3-2'] = []
+    ptsx['M2-3-2'] = np.array([[tl[0] + 344, tl[1] - 11], [tl[0] + 340, tl[1] - 13],
+                               [tl[0] + 336, tl[1] - 10], [tl[0] + 336, tl[1] + 12],
+                               [tl[0] + 331, tl[1] + 18], [tl[0] + 318, tl[1] + 18],
+                               [tl[0] + 318, tl[1] + 39], [tl[0] + 339, tl[1] + 39],
+                               [tl[0] + 339, tl[1] + 23], [tl[0] + 344, tl[1] + 14]])
 
     # Sub
-    ptsx.append(np.array([[tl[0] - 97, tl[1] - 60], [tl[0] - 97, tl[1] + 84],
-                          [tl[0] + 26, tl[1] + 84], [tl[0] + 26, tl[1] - 60]]))
+    ptdic['Sub'] = []
+    ptsx['Sub'] = np.array([[tl[0] - 97, tl[1] - 60], [tl[0] - 97, tl[1] + 84],
+                            [tl[0] + 26, tl[1] + 84], [tl[0] + 26, tl[1] - 60]])
 
     # Main
-    ptsx.append(np.array([[tl[0] + 26, tl[1] - 60], [tl[0] + 26, tl[1] + 84],
-                          [tl[0] + 318, tl[1] + 84], [tl[0] + 318, tl[1] - 60]]))
+    ptdic['Main'] = []
+    ptsx['Main'] = np.array([[tl[0] + 26, tl[1] - 60], [tl[0] + 26, tl[1] + 84],
+                             [tl[0] + 318, tl[1] + 84], [tl[0] + 318, tl[1] - 60]])
+
+    hgap = 501
+    vgap = 167
     '''
       变换思路：
       1.获取所有纵向图像
@@ -366,73 +388,77 @@ def get1Target(img, tl, best):
       3.原始图像进行上下对称
       4.获取对称图像横向h距离的所有纵向图像
     '''
-    hgap = 501
-    vgap = 167
-    ptsx = np.array(ptsx)
     ptss = ptsx.copy()
-    img = getAllTarget(ptsx, img, vgap, 1)
+    img = getAllTarget(ptsx, img, vgap, 1, ptdic)
 
     ptsx = ptss.copy()
-    img = get1LR(ptsx, img, 2 * hgap, vgap)
+    img = get1LR(ptsx, img, 2 * hgap, vgap, ptdic)
 
     ptsx = getUDMirror(ptss, tl, 12)
 
-    img = get1LR(ptsx, img, hgap, vgap)
+    img = get1LR(ptsx, img, hgap, vgap, ptdic)
 
-    return img
+    return img, ptdic
 
 
 def get2Target(img, tl, best):
     # 获取所有q2问题的多边形标注
-    ptsx = []
+    ptsx = {}
+    ptdic = {}
 
     # M1-1
-    ptsx.append(np.array([[tl[0] - 14, tl[1] + 25], [tl[0] - 14, tl[1] + 36],
-                          [tl[0] - 4, tl[1] + 36], [tl[0] - 3, tl[1] + 48],
-                          [tl[0], tl[1] + 50], [tl[0] + 5, tl[1] + 54],
-                          [tl[0] + 14, tl[1] + 56], [tl[0] + 23, tl[1] + 54],
-                          [tl[0] + 29, tl[1] + 49], [tl[0] + 32, tl[1] + 36],
-                          [tl[0] + 71, tl[1] + 36], [tl[0] + 71, tl[1] + 25]]))
+    ptdic['M1-1'] = []
+    ptsx['M1-1'] = np.array([[tl[0] - 14, tl[1] + 25], [tl[0] - 14, tl[1] + 36],
+                             [tl[0] - 4, tl[1] + 36], [tl[0] - 3, tl[1] + 48],
+                             [tl[0], tl[1] + 50], [tl[0] + 5, tl[1] + 54],
+                             [tl[0] + 14, tl[1] + 56], [tl[0] + 23, tl[1] + 54],
+                             [tl[0] + 29, tl[1] + 49], [tl[0] + 32, tl[1] + 36],
+                             [tl[0] + 71, tl[1] + 36], [tl[0] + 71, tl[1] + 25]])
 
     # M1-2
-    ptsx.append(np.array([[tl[0] - 4, tl[1] + 63], [tl[0] - 4, tl[1] + 272],
-                          [tl[0] + 2, tl[1] + 272], [tl[0] + 2, tl[1] + 163],
-                          [tl[0] + 4, tl[1] + 161], [tl[0] + 60, tl[1] + 161],
-                          [tl[0] + 62, tl[1] + 163], [tl[0] + 62, tl[1] + 270],
-                          [tl[0] + 68, tl[1] + 270], [tl[0] + 68, tl[1] + 45],
-                          [tl[0] + 62, tl[1] + 45], [tl[0] + 62, tl[1] + 154],
-                          [tl[0] + 61, tl[1] + 155], [tl[0] + 4, tl[1] + 155],
-                          [tl[0] + 2, tl[1] + 153], [tl[0] + 2, tl[1] + 63]]))
+    ptdic['M1-2'] = []
+    ptsx['M1-2'] = np.array([[tl[0] - 4, tl[1] + 63], [tl[0] - 4, tl[1] + 272],
+                             [tl[0] + 2, tl[1] + 272], [tl[0] + 2, tl[1] + 163],
+                             [tl[0] + 4, tl[1] + 161], [tl[0] + 60, tl[1] + 161],
+                             [tl[0] + 62, tl[1] + 163], [tl[0] + 62, tl[1] + 270],
+                             [tl[0] + 68, tl[1] + 270], [tl[0] + 68, tl[1] + 45],
+                             [tl[0] + 62, tl[1] + 45], [tl[0] + 62, tl[1] + 154],
+                             [tl[0] + 61, tl[1] + 155], [tl[0] + 4, tl[1] + 155],
+                             [tl[0] + 2, tl[1] + 153], [tl[0] + 2, tl[1] + 63]])
 
     # M2-1
-    ptsx.append(np.array([[tl[0], tl[1]], [tl[0], tl[1] + 19],
-                          [tl[0] + 2, tl[1] + 21], [tl[0] + 8, tl[1] + 21],
-                          [tl[0] + 9, tl[1] + 22], [tl[0] + 9, tl[1] + 42],
-                          [tl[0] + 12, tl[1] + 44], [tl[0] + 15, tl[1] + 45],
-                          [tl[0] + 18, tl[1] + 42], [tl[0] + 18, tl[1] + 21],
-                          [tl[0] + 20, tl[1] + 21], [tl[0] + 21, tl[1] + 19],
-                          [tl[0] + 21, tl[1] + 1], [tl[0] + 20, tl[1]]]))
+    ptdic['M2-1'] = []
+    ptsx['M2-1'] = np.array([[tl[0], tl[1]], [tl[0], tl[1] + 19],
+                             [tl[0] + 2, tl[1] + 21], [tl[0] + 8, tl[1] + 21],
+                             [tl[0] + 9, tl[1] + 22], [tl[0] + 9, tl[1] + 42],
+                             [tl[0] + 12, tl[1] + 44], [tl[0] + 15, tl[1] + 45],
+                             [tl[0] + 18, tl[1] + 42], [tl[0] + 18, tl[1] + 21],
+                             [tl[0] + 20, tl[1] + 21], [tl[0] + 21, tl[1] + 19],
+                             [tl[0] + 21, tl[1] + 1], [tl[0] + 20, tl[1]]])
 
     # M2-2
-    ptsx.append(np.array([[tl[0] + 6, tl[1] + 32], [tl[0] + 9, tl[1] + 35],
-                          [tl[0] + 10, tl[1] + 42], [tl[0] + 12, tl[1] + 44],
-                          [tl[0] + 15, tl[1] + 44], [tl[0] + 18, tl[1] + 42],
-                          [tl[0] + 19, tl[1] + 34], [tl[0] + 22, tl[1] + 32],
-                          [tl[0] + 25, tl[1] + 35], [tl[0] + 25, tl[1] + 46],
-                          [tl[0] + 22, tl[1] + 49], [tl[0] + 20, tl[1] + 51],
-                          [tl[0] + 15, tl[1] + 52], [tl[0] + 8, tl[1] + 52],
-                          [tl[0] + 6, tl[1] + 55], [tl[0] + 2, tl[1] + 57],
-                          [tl[0] - 7, tl[1] + 57], [tl[0] - 7, tl[1] + 49],
-                          [tl[0] + 4, tl[1] + 49], [tl[0] + 3, tl[1] + 48],
-                          [tl[0] + 3, tl[1] + 35]]))
+    ptdic['M2-2'] = []
+    ptsx['M2-2'] = np.array([[tl[0] + 6, tl[1] + 32], [tl[0] + 9, tl[1] + 35],
+                             [tl[0] + 10, tl[1] + 42], [tl[0] + 12, tl[1] + 44],
+                             [tl[0] + 15, tl[1] + 44], [tl[0] + 18, tl[1] + 42],
+                             [tl[0] + 19, tl[1] + 34], [tl[0] + 22, tl[1] + 32],
+                             [tl[0] + 25, tl[1] + 35], [tl[0] + 25, tl[1] + 46],
+                             [tl[0] + 22, tl[1] + 49], [tl[0] + 20, tl[1] + 51],
+                             [tl[0] + 15, tl[1] + 52], [tl[0] + 8, tl[1] + 52],
+                             [tl[0] + 6, tl[1] + 55], [tl[0] + 2, tl[1] + 57],
+                             [tl[0] - 7, tl[1] + 57], [tl[0] - 7, tl[1] + 49],
+                             [tl[0] + 4, tl[1] + 49], [tl[0] + 3, tl[1] + 48],
+                             [tl[0] + 3, tl[1] + 35]])
 
     # M2-3
-    ptsx.append(np.array([[tl[0] - 14, tl[1] + 36], [tl[0] - 14, tl[1] + 280],
-                          [tl[0] - 5, tl[1] + 280], [tl[0] - 5, tl[1] + 36]]))
+    ptdic['M2-3'] = []
+    ptsx['M2-3'] = np.array([[tl[0] - 14, tl[1] + 36], [tl[0] - 14, tl[1] + 280],
+                             [tl[0] - 5, tl[1] + 280], [tl[0] - 5, tl[1] + 36]])
 
     # Main
-    ptsx.append(np.array([[tl[0] - 4, tl[1] + 34], [tl[0] - 4, tl[1] + 278],
-                          [tl[0] + 68, tl[1] + 278], [tl[0] + 68, tl[1] + 34]]))
+    ptdic['Main'] = []
+    ptsx['Main'] = np.array([[tl[0] - 4, tl[1] + 34], [tl[0] - 4, tl[1] + 278],
+                             [tl[0] + 68, tl[1] + 278], [tl[0] + 68, tl[1] + 34]])
 
     hgap = 85
     vgap = 252
@@ -444,16 +470,16 @@ def get2Target(img, tl, best):
       4.获取对称图像纵向v距离的所有横向图像
     '''
     ptss = ptsx.copy()
-    img = getAllTarget(ptsx, img, hgap, 0)
+    img = getAllTarget(ptsx, img, hgap, 0, ptdic)
     ptsx = ptss.copy()
-    img = get1UD(ptsx, img, hgap, vgap * 2)
+    img = get1UD(ptsx, img, hgap, vgap * 2, ptdic)
     ptsx = getLRMirror(ptss, tl, 32)
-    img = get1UD(ptsx, img, hgap, vgap)
-    
-    return img
+    img = get1UD(ptsx, img, hgap, vgap, ptdic)
+
+    return img, ptdic
 
 
-def getCoordinate(img, getimg = 0):
+def getCoordinate(img, getimg=0):
     # 获取图像的所有零件位置
 
     # 1、保存原始未处理图像便于画图
@@ -467,18 +493,18 @@ def getCoordinate(img, getimg = 0):
     # 3、获取是q1还是q2问题以及最好匹配位置
     max_val, max_loc, flag, best, img = getWhich(img, m)
 
-    # 4、如果二值化的图片有过拉伸处理这里对要进行画图的原图也进行同样的处理
-    oimg = cv.resize(oimg, (img.shape[1], img.shape[0]), cv.INTER_CUBIC)
-
     # return 没有一个大于0.75的匹配
     if flag == -1:
         print('Error')
         if not getimg:
-            cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
-            cv.imshow("match", oimg)
-            return 0
+            # cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
+            # cv.imshow("match", oimg)
+            return [0, 0]
         else:
             return [0, oimg]
+
+    # 4、如果二值化的图片有过拉伸处理这里对要进行画图的原图也进行同样的处理
+    oimg = cv.resize(oimg, (img.shape[1], img.shape[0]), cv.INTER_CUBIC)
 
     # 5、获取最佳位置以及模板大小，并把最佳匹配在图中画出来
     th, tw = m[flag][0].shape[:2]
@@ -488,17 +514,69 @@ def getCoordinate(img, getimg = 0):
 
     # 6、根据q1还是q2获取所有零件位置并在图中画出来
     if not flag:
-        oimg = get1Target(oimg, tl, best)
+        oimg, ptdic = get1Target(oimg, tl, best)
     else:
-        oimg = get2Target(oimg, tl, best)
+        oimg, ptdic = get2Target(oimg, tl, best)
 
     # 7、图片的展示和返回
     if not getimg:
         cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
         cv.imshow("match", oimg)
-        return 1
+        return [ptdic, oimg.shape]
     else:
         return [1, oimg]
+
+
+def getOverlapping(pts1, pts2, shape):
+    im1 = np.zeros(shape, dtype=np.uint8)
+    im1 = cv.fillConvexPoly(im1, pts1, 1)
+
+    im2 = np.zeros(shape, dtype=np.uint8)
+    im2 = cv.fillConvexPoly(im2, pts2, 1)
+
+    img = im1 + im2
+
+    min_val, max_val, min_loc, max_loc = cv.minMaxLoc(img)
+
+    if max_val > 1:
+        return 1
+    else:
+        return 0
+
+
+def getQ1Out(ptdic, shape, target):
+    sum_m1 = 0
+    sum_m2 = 0
+    sum_m = 0
+    for key in ['M1-1', 'M1-2', 'M1-3', 'M1-4']:
+        if getOverlapping(ptdic[key], target, shape):
+            sum_m1 += 1
+            break
+    for key in ['M2-1', 'M2-2', 'M2-3']:
+        if getOverlapping(ptdic[key], target, shape):
+            sum_m2 += 1
+            break
+    for key in ['Main', 'Sub']:
+        if getOverlapping(ptdic[key], target, shape):
+            sum_m += 1
+            break
+
+def getQ2Out(ptdic, shape, target):
+    sum_m1 = 0
+    sum_m2 = 0
+    sum_m = 0
+    for key in ['M1-1', 'M1-2']:
+        if getOverlapping(ptdic[key], target, shape):
+            sum_m1 += 1
+            break
+    for key in ['M2-1', 'M2-2', 'M2-3']:
+        if getOverlapping(ptdic[key], target, shape):
+            sum_m2 += 1
+            break
+    for key in ['Main']:
+        if getOverlapping(ptdic[key], target, shape):
+            sum_m += 1
+            break
 
 
 def getJPG(path):
@@ -516,17 +594,17 @@ def getJPG(path):
 # end = datetime.datetime.now()
 # print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
 
-def main():
-    for i in getJPG('./testp/tp/q1/'):
-        start = datetime.datetime.now()
-        getCoordinate(cv.imread(i))
-        end = datetime.datetime.now()
-        print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+# def main():
+#     for i in getJPG('./testp/tp/q/'):
+#         start = datetime.datetime.now()
+#         getCoordinate(cv.imread(i))
+#         end = datetime.datetime.now()
+#         print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+#         cv.waitKey(0)
+#         cv.destroyAllWindows()
+
+#     cv.waitKey(0)
+#     cv.destroyAllWindows()
 
 '''
 三种亮度由暗到亮分为0,1,2
@@ -575,5 +653,9 @@ h2->h0:1.13953488
 
 '''
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
+
+[dic, shape] = getCoordinate(cv.imread('./testp/tp/q/1.jpg'))
+cv.waitKey(0)
+cv.destroyAllWindows()
