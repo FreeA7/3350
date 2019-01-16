@@ -479,7 +479,7 @@ def get2Target(img, tl, best):
     return img, ptdic
 
 
-def getCoordinate(img, getimg=0):
+def getCoordinate(img, getimg=0, showimg=0):
     # 获取图像的所有零件位置
 
     # 1、保存原始未处理图像便于画图
@@ -497,9 +497,10 @@ def getCoordinate(img, getimg=0):
     if flag == -1:
         print('Error')
         if not getimg:
-            # cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
-            # cv.imshow("match", oimg)
-            return [0, 0]
+            if showimg:
+                cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
+                cv.imshow("match", oimg)
+            return [0, 0, 0]
         else:
             return [0, oimg]
 
@@ -520,9 +521,11 @@ def getCoordinate(img, getimg=0):
 
     # 7、图片的展示和返回
     if not getimg:
-        cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
-        cv.imshow("match", oimg)
-        return [ptdic, oimg.shape]
+        if showimg:
+            cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
+            cv.imshow("match", oimg)
+        # 返回多边形dic、图片形状、q1还是q2
+        return [ptdic, oimg.shape, flag]
     else:
         return [1, oimg]
 
@@ -536,47 +539,82 @@ def getOverlapping(pts1, pts2, shape):
 
     img = im1 + im2
 
-    min_val, max_val, min_loc, max_loc = cv.minMaxLoc(img)
-
-    if max_val > 1:
+    if (img > 1).any():
         return 1
     else:
         return 0
 
 
-def getQ1Out(ptdic, shape, target):
+def getReturn(m1, m2, m):
+    result = {}
+    result['AFFECTEDPIXELNUM'] = m
+    if not m1:
+        result['ISM1OPEN'] = False
+        result['M1M1'] = False
+    else:
+        result['ISM1OPEN'] = True
+        if m1 > 1:
+            result['M1M1'] = True
+        else:
+            result['M1M1'] = False
+    if not m2:
+        result['ISM2OPEN'] = False
+        result['M2M2'] = False
+    else:
+        result['ISM2OPEN'] = True
+        if m2 > 1:
+            result['M2M2'] = True
+        else:
+            result['M2M2'] = False
+    if m1 > 1 and m2 > 1:
+        result['M1M2'] = True
+    else:
+        result['M1M2'] = False
+    return result
+
+
+def getQ1Out(ptdic, target, shape):
     sum_m1 = 0
     sum_m2 = 0
     sum_m = 0
-    for key in ['M1-1', 'M1-2', 'M1-3', 'M1-4']:
-        if getOverlapping(ptdic[key], target, shape):
-            sum_m1 += 1
-            break
-    for key in ['M2-1', 'M2-2', 'M2-3']:
-        if getOverlapping(ptdic[key], target, shape):
-            sum_m2 += 1
-            break
+    for key in ['M1-1-1', 'M1-1-2', 'M1-1-3', 'M1-2', 'M1-3', 'M1-4']:
+        for pts in ptdic[key]:
+            if getOverlapping(pts, target, shape):
+                sum_m1 += 1
+                break
+    for key in ['M2-1', 'M2-2', 'M2-3-1', 'M2-3-2']:
+        for pts in ptdic[key]:
+            if getOverlapping(pts, target, shape):
+                sum_m2 += 1
+                break
     for key in ['Main', 'Sub']:
-        if getOverlapping(ptdic[key], target, shape):
-            sum_m += 1
-            break
+        for pts in ptdic[key]:
+            if getOverlapping(pts, target, shape):
+                sum_m += 1
+                break
+    return getReturn(sum_m1, sum_m2, sum_m)
 
-def getQ2Out(ptdic, shape, target):
+
+def getQ2Out(ptdic, target, shape):
     sum_m1 = 0
     sum_m2 = 0
     sum_m = 0
     for key in ['M1-1', 'M1-2']:
-        if getOverlapping(ptdic[key], target, shape):
-            sum_m1 += 1
-            break
+        for pts in ptdic[key]:
+            if getOverlapping(pts, target, shape):
+                sum_m1 += 1
+                break
     for key in ['M2-1', 'M2-2', 'M2-3']:
-        if getOverlapping(ptdic[key], target, shape):
-            sum_m2 += 1
-            break
+        for pts in ptdic[key]:
+            if getOverlapping(pts, target, shape):
+                sum_m2 += 1
+                break
     for key in ['Main']:
-        if getOverlapping(ptdic[key], target, shape):
-            sum_m += 1
-            break
+        for pts in ptdic[key]:
+            if getOverlapping(pts, target, shape):
+                sum_m += 1
+                break
+    return getReturn(sum_m1, sum_m2, sum_m)
 
 
 def getJPG(path):
@@ -589,22 +627,73 @@ def getJPG(path):
     return list_name
 
 
+# -------------------------- 处理指定path下所有图片并展示 --------------------------
+# path = './testp/tp/q/'
+# for i in getJPG(path):
+#     start = datetime.datetime.now()
+#     [dic, shape, q] = getCoordinate(cv.imread(i))
+#     end = datetime.datetime.now()
+#     print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+#     cv.waitKey(0)
+#     cv.destroyAllWindows()
+
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+
+
+# -------------------------- 处理指定图片并展示 --------------------------
+# img = './testp/tp/q/1.jpg'
 # start = datetime.datetime.now()
-# getCoordinate(cv.imread('./testp/tp/3300_TA881211CE_TAAOLEC0_34_-232.385_-138.598__S_20180816_094924.jpg'))
+# [dic, shape, q] = getCoordinate(cv.imread(img))
 # end = datetime.datetime.now()
 # print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
 
-# def main():
-#     for i in getJPG('./testp/tp/q/'):
-#         start = datetime.datetime.now()
-#         getCoordinate(cv.imread(i))
-#         end = datetime.datetime.now()
-#         print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
-#         cv.waitKey(0)
-#         cv.destroyAllWindows()
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 
-#     cv.waitKey(0)
-#     cv.destroyAllWindows()
+
+# -------------------------- 输出单个重叠情况的测试 --------------------------
+# img = './testp/tp/q/1.jpg'
+# start = datetime.datetime.now()
+# [dic, shape, q] = getCoordinate(cv.imread(img), showimg=1)
+
+# target = np.array([[0, 0], [0, 10], [10, 10], [10, 0]])
+
+# if not q:
+#     re = getQ1Out(dic, target, shape)
+# else:
+#     re = getQ2Out(dic, target, shape)
+# end = datetime.datetime.now()
+# print('单次比较费时%fs:' % (((end - start).microseconds) / 1e6))
+# print(re)
+
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+
+
+# -------------------------- 大量测试输出重叠情况的速度 --------------------------
+
+start = datetime.datetime.now()
+s = 0
+
+for img in getJPG('./testp/tp/q2/'):
+    s += 1
+    [dic, shape, q] = getCoordinate(cv.imread(img))
+    target = np.array([[0, 0], [0, 10], [10, 10], [10, 0]])
+    if not q:
+        re = getQ1Out(dic, target, shape)
+    else:
+        re = getQ2Out(dic, target, shape)
+    print(re)
+
+end = datetime.datetime.now()
+all_time = (end - start).seconds + (((end - start).microseconds) / 1e6)
+one_time = all_time / s
+
+print('共处理%d张图片，共费时%fs，平均每张图片费时%fs' % (s, all_time, one_time))
+
+
+
 
 '''
 三种亮度由暗到亮分为0,1,2
@@ -652,10 +741,3 @@ w2->w0:1.13618677
 h2->h0:1.13953488
 
 '''
-
-# if __name__ == '__main__':
-#     main()
-
-[dic, shape] = getCoordinate(cv.imread('./testp/tp/q/1.jpg'))
-cv.waitKey(0)
-cv.destroyAllWindows()
