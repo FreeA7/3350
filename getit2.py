@@ -49,17 +49,17 @@ def getBest(img, m, q):
 
     max_val_0, max_loc_0, flag_0 = getMore(img, m)
 
-    if not q:
+    if q == 1:
         img = cv.resize(img, (855, 646), cv.INTER_CUBIC)
-    else:
+    elif q == 2:
         img = cv.resize(img, (863, 647), cv.INTER_CUBIC)
 
     max_val_1, max_loc_1, flag_1 = getMore(img, m)
 
     img1 = img_t.copy()
-    if not q:
+    if q == 1:
         img1 = cv.resize(img1, (872, 656), cv.INTER_CUBIC)
-    else:
+    elif q == 2:
         img1 = cv.resize(img1, (876, 657), cv.INTER_CUBIC)
 
     max_val_2, max_loc_2, flag_2 = getMore(img1, m)
@@ -83,17 +83,13 @@ def getBest(img, m, q):
         return 0, 0, -1, img_t
 
 
-def getWhich(img, m):
-    # 获取目标图片的最好匹配val和位置loc，以及所符合的问题是q1还是q2
-    max_val, max_loc, best, img = getBest(img, m[0], 0)
-    flag = 0
+def getWhich(img, m, q):
+    # 获取目标图片的最好匹配val和位置loc
+    max_val, max_loc, best, img = getBest(img, m[q - 1], q)
     if max_val == 0:
-        max_val, max_loc, best, img = getBest(img, m[1], 1)
-        flag = 1
-        if max_val == 0:
-            return 0, 0, -1, -1, img
-    # flag是指问题是q1还是q2，best是指匹配的最好的模板是这个问题的哪一个模板
-    return max_val, max_loc, flag, best, img
+        return 0, 0, -1, img
+    # best是指匹配的最好的模板是这个问题的哪一个模板
+    return max_val, max_loc, best, img
 
 
 def getColor():
@@ -165,13 +161,18 @@ def getAllTarget(ptsx, img, gap, hov, ptdic, offset=0):
     changeFlag = 0
 
     # 偏移修正系数
-    offset_num = 1
+    if not offset:
+        offset_num = 0
+    else:
+        offset_num = 1
 
     while 1:
 
         # 整体移动ptsx
         for key in ptsx.keys():
-            ptsx[key] = getMove(ptsx[key], gap - offset_num // 6, hov)
+            # print(gap - offset_num // (offset + 1))
+            ptsx[key] = getMove(
+                ptsx[key], gap - offset_num // (offset + 1), hov)
         if offset_num > 0:
             offset_num += 1
         elif offset_num < 0:
@@ -199,7 +200,7 @@ def getAllTarget(ptsx, img, gap, hov, ptdic, offset=0):
         elif not changeFlag:
             # 改变移动方向，ptss回归原始拷贝
             changeFlag = 1
-            if offset_num != 0:
+            if offset:
                 offset_num = -1
             gap = (-1) * gap
             ptsx = ptss
@@ -210,7 +211,7 @@ def getAllTarget(ptsx, img, gap, hov, ptdic, offset=0):
     return img
 
 
-def get1LR(ptsx, img, hgap, vgap, ptdic):
+def get1LR(ptsx, img, hgap, vgap, ptdic, offset=0):
     ''' 获取一个多边形list左右一定gap的上下所有多边形
         ---------------------------                ---------------------------
         |                         |                |   |-|               |-| |
@@ -226,40 +227,40 @@ def get1LR(ptsx, img, hgap, vgap, ptdic):
     ptss = ptsx.copy()
     for key in ptsx.keys():
         ptsx[key] = getMove(ptsx[key], hgap, 0)
-    img = getAllTarget(ptsx, img, vgap, 1, ptdic)
+    img = getAllTarget(ptsx, img, vgap, 1, ptdic, offset)
 
     ptsx = ptss
 
     for key in ptsx.keys():
         ptsx[key] = getMove(ptsx[key], (-1) * hgap, 0)
-    img = getAllTarget(ptsx, img, vgap, 1, ptdic)
+    img = getAllTarget(ptsx, img, vgap, 1, ptdic, offset)
 
     return img
 
 
-def get1UD(ptsx, img, hgap, vgap, ptdic):
+def get1UD(ptsx, img, hgap, vgap, ptdic, offset=0):
     ''' 获取一个多边形list上下一定gap的左右所有多边形
         --------------------------                 --------------------------
         |                        |                 |                        |
-        |                        |                 ||-||-||-||-||-||-||-||-|| 
+        |                        |                 ||-||-||-||-||-||-||-||-||
         |                        |                 |            vgap        |
         |           |-|          |        -->      |            |-|         |
         |                        |                 |            vgap        |
-        |                        |                 ||-||-||-||-||-||-||-||-|| 
-        |                        |                 |                        | 
-        |                        |                 |                        | 
+        |                        |                 ||-||-||-||-||-||-||-||-||
+        |                        |                 |                        |
+        |                        |                 |                        |
         --------------------------                 --------------------------
     '''
     ptss = ptsx.copy()
     for key in ptsx.keys():
         ptsx[key] = getMove(ptsx[key], vgap, 1)
-    img = getAllTarget(ptsx, img, hgap, 0, ptdic)
+    img = getAllTarget(ptsx, img, hgap, 0, ptdic, offset)
 
     ptsx = ptss
 
     for key in ptsx.keys():
         ptsx[key] = getMove(ptsx[key], (-1) * vgap, 1)
-    img = getAllTarget(ptsx, img, hgap, 0, ptdic)
+    img = getAllTarget(ptsx, img, hgap, 0, ptdic, offset)
 
     return img
 
@@ -381,6 +382,7 @@ def get1Target(img, tl, best):
 
     hgap = 501
     vgap = 167
+    offset = 0
     '''
       变换思路：
       1.获取所有纵向图像
@@ -389,14 +391,14 @@ def get1Target(img, tl, best):
       4.获取对称图像横向h距离的所有纵向图像
     '''
     ptss = ptsx.copy()
-    img = getAllTarget(ptsx, img, vgap, 1, ptdic)
+    img = getAllTarget(ptsx, img, vgap, 1, ptdic, offset)
 
     ptsx = ptss.copy()
-    img = get1LR(ptsx, img, 2 * hgap, vgap, ptdic)
+    img = get1LR(ptsx, img, 2 * hgap, vgap, ptdic, offset)
 
     ptsx = getUDMirror(ptss, tl, 12)
 
-    img = get1LR(ptsx, img, hgap, vgap, ptdic)
+    img = get1LR(ptsx, img, hgap, vgap, ptdic, offset)
 
     return img, ptdic
 
@@ -460,8 +462,9 @@ def get2Target(img, tl, best):
     ptsx['Main'] = np.array([[tl[0] - 4, tl[1] + 34], [tl[0] - 4, tl[1] + 278],
                              [tl[0] + 68, tl[1] + 278], [tl[0] + 68, tl[1] + 34]])
 
-    hgap = 85
-    vgap = 252
+    hgap = 86
+    vgap = 255
+    offset = 2
     '''
       变换思路：
       1.获取所有横向图像
@@ -470,16 +473,16 @@ def get2Target(img, tl, best):
       4.获取对称图像纵向v距离的所有横向图像
     '''
     ptss = ptsx.copy()
-    img = getAllTarget(ptsx, img, hgap, 0, ptdic)
+    img = getAllTarget(ptsx, img, hgap, 0, ptdic, offset)
     ptsx = ptss.copy()
-    img = get1UD(ptsx, img, hgap, vgap * 2, ptdic)
+    img = get1UD(ptsx, img, hgap, vgap * 2, ptdic, offset)
     ptsx = getLRMirror(ptss, tl, 32)
-    img = get1UD(ptsx, img, hgap, vgap, ptdic)
+    img = get1UD(ptsx, img, hgap, vgap, ptdic, offset)
 
     return img, ptdic
 
 
-def getCoordinate(img, getimg=0, showimg=0):
+def getCoordinate(img, q, getimg=0, showimg=0):
     # 获取图像的所有零件位置
 
     # 1、保存原始未处理图像便于画图
@@ -491,16 +494,16 @@ def getCoordinate(img, getimg=0, showimg=0):
 
     print('进行匹配：')
     # 3、获取是q1还是q2问题以及最好匹配位置
-    max_val, max_loc, flag, best, img = getWhich(img, m)
+    max_val, max_loc, best, img = getWhich(img, m, q)
 
     # return 没有一个大于0.75的匹配
-    if flag == -1:
+    if best == -1:
         print('Error')
         if not getimg:
             if showimg:
                 cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
                 cv.imshow("match", oimg)
-            return [0, 0, 0]
+            return [0, 0]
         else:
             return [0, oimg]
 
@@ -508,15 +511,15 @@ def getCoordinate(img, getimg=0, showimg=0):
     oimg = cv.resize(oimg, (img.shape[1], img.shape[0]), cv.INTER_CUBIC)
 
     # 5、获取最佳位置以及模板大小，并把最佳匹配在图中画出来
-    th, tw = m[flag][0].shape[:2]
+    th, tw = m[q - 1][0].shape[:2]
     tl = max_loc
     br = (tl[0] + tw, tl[1] + th)
     cv.rectangle(oimg, tl, br, (0, 0, 255), 1)
 
     # 6、根据q1还是q2获取所有零件位置并在图中画出来
-    if not flag:
+    if q == 1:
         oimg, ptdic = get1Target(oimg, tl, best)
-    else:
+    elif q == 2:
         oimg, ptdic = get2Target(oimg, tl, best)
 
     # 7、图片的展示和返回
@@ -525,7 +528,7 @@ def getCoordinate(img, getimg=0, showimg=0):
             cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
             cv.imshow("match", oimg)
         # 返回多边形dic、图片形状、q1还是q2
-        return [ptdic, oimg.shape, flag]
+        return [ptdic, oimg.shape]
     else:
         return [1, oimg]
 
@@ -628,23 +631,24 @@ def getJPG(path):
 
 
 # -------------------------- 处理指定path下所有图片并展示 --------------------------
-# path = './testp/tp/q/'
-# for i in getJPG(path):
-#     start = datetime.datetime.now()
-#     [dic, shape, q] = getCoordinate(cv.imread(i))
-#     end = datetime.datetime.now()
-#     print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
-#     cv.waitKey(0)
-#     cv.destroyAllWindows()
+path = './testp/tp/q2/'
+for i in getJPG(path):
+    start = datetime.datetime.now()
+    [dic, shape] = getCoordinate(cv.imread(i), q=2, showimg=1)
+    end = datetime.datetime.now()
+    print(i)
+    print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+    cv.waitKey(0)
+    cv.destroyAllWindows()
 
-# cv.waitKey(0)
-# cv.destroyAllWindows()
+cv.waitKey(0)
+cv.destroyAllWindows()
 
 
 # -------------------------- 处理指定图片并展示 --------------------------
-# img = './testp/tp/q/1.jpg'
+# img = './sampTestPic/3300_TA881083BD_TAAOL7C0_5_-1026.78_-238.174__S_20180819_113056.jpg'
 # start = datetime.datetime.now()
-# [dic, shape, q] = getCoordinate(cv.imread(img))
+# [dic, shape] = getCoordinate(cv.imread(img), q=2, showimg=1)
 # end = datetime.datetime.now()
 # print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
 
@@ -653,16 +657,14 @@ def getJPG(path):
 
 
 # -------------------------- 输出单个重叠情况的测试 --------------------------
-# img = './testp/tp/q/1.jpg'
+# img = './testp/tp/q1/1.jpg'
 # start = datetime.datetime.now()
-# [dic, shape, q] = getCoordinate(cv.imread(img), showimg=1)
+# [dic, shape] = getCoordinate(cv.imread(img), q = 1, showimg=1)
 
 # target = np.array([[0, 0], [0, 10], [10, 10], [10, 0]])
 
-# if not q:
-#     re = getQ1Out(dic, target, shape)
-# else:
-#     re = getQ2Out(dic, target, shape)
+# re = getQ1Out(dic, target, shape)
+
 # end = datetime.datetime.now()
 # print('单次比较费时%fs:' % (((end - start).microseconds) / 1e6))
 # print(re)
@@ -672,27 +674,21 @@ def getJPG(path):
 
 
 # -------------------------- 大量测试输出重叠情况的速度 --------------------------
+# start = datetime.datetime.now()
+# s = 0
 
-start = datetime.datetime.now()
-s = 0
+# for img in getJPG('./testp/tp/q2/'):
+#     s += 1
+#     [dic, shape] = getCoordinate(cv.imread(img), q = 2)
+#     target = np.array([[0, 0], [0, 10], [10, 10], [10, 0]])
+#     re = getQ2Out(dic, target, shape)
+#     print(re)
 
-for img in getJPG('./testp/tp/q2/'):
-    s += 1
-    [dic, shape, q] = getCoordinate(cv.imread(img))
-    target = np.array([[0, 0], [0, 10], [10, 10], [10, 0]])
-    if not q:
-        re = getQ1Out(dic, target, shape)
-    else:
-        re = getQ2Out(dic, target, shape)
-    print(re)
+# end = datetime.datetime.now()
+# all_time = (end - start).seconds + (((end - start).microseconds) / 1e6)
+# one_time = all_time / s
 
-end = datetime.datetime.now()
-all_time = (end - start).seconds + (((end - start).microseconds) / 1e6)
-one_time = all_time / s
-
-print('共处理%d张图片，共费时%fs，平均每张图片费时%fs' % (s, all_time, one_time))
-
-
+# print('共处理%d张图片，共费时%fs，平均每张图片费时%fs' % (s, all_time, one_time))
 
 
 '''
