@@ -372,13 +372,13 @@ def get1Target(img, tl, best):
 
     # Sub
     ptdic['Sub'] = []
-    ptsx['Sub'] = np.array([[tl[0] - 97, tl[1] - 60], [tl[0] - 97, tl[1] + 84],
-                            [tl[0] + 26, tl[1] + 84], [tl[0] + 26, tl[1] - 60]])
+    ptsx['Sub'] = np.array([[tl[0] - 97, tl[1] - 60], [tl[0] - 97, tl[1] + 107],
+                            [tl[0] + 26, tl[1] + 107], [tl[0] + 26, tl[1] - 60]])
 
     # Main
     ptdic['Main'] = []
-    ptsx['Main'] = np.array([[tl[0] + 26, tl[1] - 60], [tl[0] + 26, tl[1] + 84],
-                             [tl[0] + 318, tl[1] + 84], [tl[0] + 318, tl[1] - 60]])
+    ptsx['Main'] = np.array([[tl[0] + 26, tl[1] - 60], [tl[0] + 26, tl[1] + 107],
+                             [tl[0] + 404, tl[1] + 107], [tl[0] + 404, tl[1] - 60]])
 
     hgap = 501
     vgap = 167
@@ -459,12 +459,12 @@ def get2Target(img, tl, best):
 
     # Main
     ptdic['Main'] = []
-    ptsx['Main'] = np.array([[tl[0] - 4, tl[1] + 34], [tl[0] - 4, tl[1] + 278],
-                             [tl[0] + 68, tl[1] + 278], [tl[0] + 68, tl[1] + 34]])
+    ptsx['Main'] = np.array([[tl[0] - 18, tl[1] + 34], [tl[0] - 18, tl[1] + 289],
+                             [tl[0] + 68, tl[1] + 289], [tl[0] + 68, tl[1] + 34]])
 
     hgap = 86
     vgap = 255
-    offset = 2
+    offset = 0
     '''
       变换思路：
       1.获取所有横向图像
@@ -631,24 +631,24 @@ def getJPG(path):
 
 
 # -------------------------- 处理指定path下所有图片并展示 --------------------------
-path = './testp/tp/q2/'
-for i in getJPG(path):
-    start = datetime.datetime.now()
-    [dic, shape] = getCoordinate(cv.imread(i), q=2, showimg=1)
-    end = datetime.datetime.now()
-    print(i)
-    print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+# path = './testp/tp/q2/'
+# for i in getJPG(path):
+#     start = datetime.datetime.now()
+#     [dic, shape] = getCoordinate(cv.imread(i), q=2, showimg=1)
+#     end = datetime.datetime.now()
+#     print(i)
+#     print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+#     cv.waitKey(0)
+#     cv.destroyAllWindows()
 
-cv.waitKey(0)
-cv.destroyAllWindows()
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 
 
 # -------------------------- 处理指定图片并展示 --------------------------
-# img = './sampTestPic/3300_TA881083BD_TAAOL7C0_5_-1026.78_-238.174__S_20180819_113056.jpg'
+# img = './testp/tp/q1/1.jpg'
 # start = datetime.datetime.now()
-# [dic, shape] = getCoordinate(cv.imread(img), q=2, showimg=1)
+# [dic, shape] = getCoordinate(cv.imread(img), q=1, showimg=1)
 # end = datetime.datetime.now()
 # print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
 
