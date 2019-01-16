@@ -60,12 +60,10 @@ def clearDir(path):
 
 
 def main():
-    samppath = './sampTestPic/'
-    clearDir(samppath)
-    outpath = './outTestPic/'
+    samppath = './testp/tp/q2/'
+    # clearDir(samppath)
+    outpath = './testp/tp/q2_ERROR/'
     clearDir(outpath)
-
-    getPic(samppath)
 
     all_sum = 0
     error_sum = 0
@@ -73,7 +71,7 @@ def main():
     for i in getJPG(samppath):
         all_sum += 1
         start = datetime.datetime.now()
-        # out = getCoordinate(cv.imread(i), q=1, getimg=1)
+        out = getCoordinate(cv.imread(i), q=2, getimg=1)
         # out = getCoordinate(cv.imread(i), q=2, getimg=1)
         end = datetime.datetime.now()
         if not out[0]:
