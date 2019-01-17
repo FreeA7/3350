@@ -18,11 +18,13 @@ def gaussianThreshold(img):
 
 def getModel():
     # 获取模板，返回为一个[q1问题的模板list, q2问题的模板list]
-    m1 = cv.imread('./feature/q1/feature5.jpg', cv.IMREAD_GRAYSCALE)
-    m2 = cv.imread('./feature/q1/feature6.jpg', cv.IMREAD_GRAYSCALE)
-    m3 = cv.imread('./feature/q2/feature3.jpg', cv.IMREAD_GRAYSCALE)
-    m4 = cv.imread('./feature/q2/feature3.jpg', cv.IMREAD_GRAYSCALE)
-    return [[m1, m2], [m3, m4]]
+    m11 = cv.imread('./feature/q1/feature11.jpg', cv.IMREAD_GRAYSCALE)
+    m12 = cv.imread('./feature/q1/feature12.jpg', cv.IMREAD_GRAYSCALE)
+
+    m21 = cv.imread('./feature/q2/feature3.jpg', cv.IMREAD_GRAYSCALE)
+    m22 = cv.imread('./feature/q2/feature3.jpg', cv.IMREAD_GRAYSCALE)
+
+    return [[m11, m12], [m21, m22]]
 
 
 def getMore(img, m):
@@ -32,6 +34,7 @@ def getMore(img, m):
 
     res1 = cv.matchTemplate(img, m[1], cv.TM_CCOEFF_NORMED)
     min_val1, max_val1, min_loc1, max_loc1 = cv.minMaxLoc(res1)
+    print('A:%f, %f' % (max_val0, max_val1))
 
     if max_val0 > max_val1:
         return max_val0, max_loc0, 0
@@ -77,7 +80,7 @@ def getBest(img, m, q):
 
     print('    END:%f' % (list_val[i]))
 
-    if list_val[i] >= 0.75:
+    if list_val[i] >= 0.7:
         return list_val[i], list_loc[i], list_flag[i], list_img[i]
     else:
         return 0, 0, -1, img_t
@@ -266,6 +269,7 @@ def get1UD(ptsx, img, hgap, vgap, ptdic, offset=0):
 
 
 def get1Target(img, tl, best):
+    tl = [tl[0] - 217, tl[1]]
     # 获取所有q1问题的多边形标注
     ptsx = {}
     if not best:
@@ -499,10 +503,10 @@ def getCoordinate(img, q, getimg=0, showimg=0):
     # return 没有一个大于0.75的匹配
     if best == -1:
         print('Error')
+        if showimg:
+            cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
+            cv.imshow("match", oimg)
         if not getimg:
-            if showimg:
-                cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
-                cv.imshow("match", oimg)
             return [0, 0]
         else:
             return [0, oimg]
@@ -523,22 +527,26 @@ def getCoordinate(img, q, getimg=0, showimg=0):
         oimg, ptdic = get2Target(oimg, tl, best)
 
     # 7、图片的展示和返回
+    if showimg:
+        cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
+        cv.imshow("match", oimg)
     if not getimg:
-        if showimg:
-            cv.namedWindow("match", cv.WINDOW_AUTOSIZE)
-            cv.imshow("match", oimg)
         # 返回多边形dic、图片形状、q1还是q2
         return [ptdic, oimg.shape]
     else:
         return [1, oimg]
 
 
-def getOverlapping(pts1, target, shape):
+def getOverlapping(ptss, target, shape):
     im1 = np.zeros(shape, dtype=np.uint8)
-    im1 = cv.fillConvexPoly(im1, pts1, 1)
+    for pts in ptss:
+        im1 = cv.fillConvexPoly(im1, pts, 1)
 
-    target = cv.resize(target, shape, cv.INTER_CUBIC)
-    target = target // 255
+    im2 = np.zeros(shape, dtype=np.uint8)
+    target = cv.fillConvexPoly(im2, target, 1)
+
+    # target = cv.resize(target, shape, cv.INTER_CUBIC)
+    # target = target // 255
 
     img = im1 + target
 
@@ -569,7 +577,7 @@ def getReturn(m1, m2, m):
             result['M2M2'] = True
         else:
             result['M2M2'] = False
-    if m1 > 1 and m2 > 1:
+    if m1 > 0 and m2 > 0:
         result['M1M2'] = True
     else:
         result['M1M2'] = False
@@ -580,21 +588,28 @@ def getQ1Out(ptdic, target, shape):
     sum_m1 = 0
     sum_m2 = 0
     sum_m = 0
-    for key in ['M1-1-1', 'M1-1-2', 'M1-1-3', 'M1-2', 'M1-3', 'M1-4']:
-        for pts in ptdic[key]:
-            if getOverlapping(pts, target, shape):
-                sum_m1 += 1
-                break
-    for key in ['M2-1', 'M2-2', 'M2-3-1', 'M2-3-2']:
-        for pts in ptdic[key]:
-            if getOverlapping(pts, target, shape):
-                sum_m2 += 1
-                break
-    for key in ['Main', 'Sub']:
-        for pts in ptdic[key]:
-            if getOverlapping(pts, target, shape):
-                sum_m += 1
-                break
+
+    for i in range(len(ptdic['Main'])):
+        m1 = []
+        for key in ['M1-1-1', 'M1-1-2', 'M1-1-3', 'M1-2', 'M1-3', 'M1-4']:
+            m1.append(ptdic[key][i])
+        if getOverlapping(m1, target, shape):
+            sum_m1 += 1
+
+    for i in range(len(ptdic['Main'])):
+        m2 = []
+        for key in ['M2-1', 'M2-2', 'M2-3-1', 'M2-3-2']:
+            m2.append(ptdic[key][i])
+        if getOverlapping(m2, target, shape):
+            sum_m2 += 1
+
+    for i in range(len(ptdic['Main'])):
+        m = []
+        for key in ['Main', 'Sub']:
+            m.append(ptdic[key][i])
+        if getOverlapping(m, target, shape):
+            sum_m += 1
+
     return getReturn(sum_m1, sum_m2, sum_m)
 
 
@@ -602,21 +617,28 @@ def getQ2Out(ptdic, target, shape):
     sum_m1 = 0
     sum_m2 = 0
     sum_m = 0
-    for key in ['M1-1', 'M1-2']:
-        for pts in ptdic[key]:
-            if getOverlapping(pts, target, shape):
-                sum_m1 += 1
-                break
-    for key in ['M2-1', 'M2-2', 'M2-3']:
-        for pts in ptdic[key]:
-            if getOverlapping(pts, target, shape):
-                sum_m2 += 1
-                break
-    for key in ['Main']:
-        for pts in ptdic[key]:
-            if getOverlapping(pts, target, shape):
-                sum_m += 1
-                break
+
+    for i in range(len(ptdic['Main'])):
+        m1 = []
+        for key in ['M1-1', 'M1-2']:
+            m1.append(ptdic[key][i])
+        if getOverlapping(m1, target, shape):
+            sum_m1 += 1
+
+    for i in range(len(ptdic['Main'])):
+        m2 = []
+        for key in ['M2-1', 'M2-2', 'M2-3']:
+            m2.append(ptdic[key][i])
+        if getOverlapping(m2, target, shape):
+            sum_m2 += 1
+
+    for i in range(len(ptdic['Main'])):
+        m = []
+        for key in ['Main']:
+            m.append(ptdic[key][i])
+        if getOverlapping(m, target, shape):
+            sum_m += 1
+
     return getReturn(sum_m1, sum_m2, sum_m)
 
 
@@ -631,10 +653,10 @@ def getJPG(path):
 
 
 # -------------------------- 处理指定path下所有图片并展示 --------------------------
-# path = './testp/tp/q2/'
+# path = './sampTestPic/'
 # for i in getJPG(path):
 #     start = datetime.datetime.now()
-#     [dic, shape] = getCoordinate(cv.imread(i), q=2, showimg=1)
+#     [dic, shape] = getCoordinate(cv.imread(i), q=1, showimg=1)
 #     end = datetime.datetime.now()
 #     print(i)
 #     print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
@@ -646,9 +668,11 @@ def getJPG(path):
 
 
 # -------------------------- 处理指定图片并展示 --------------------------
-# img = './testp/tp/q1/1.jpg'
+# img = './testp/tp/q1_ERROR/3300_TA881087BC_TAAOLCC0_9_-376.521_-1030.05__S_20180815_201324.jpg'
 # start = datetime.datetime.now()
 # [dic, shape] = getCoordinate(cv.imread(img), q=1, showimg=1)
+# # out = getCoordinate(cv.imread(img), q=1, showimg=1, getimg=1)
+# # cv.imwrite('./testp/tp/3300_TA881135AR_TAAOLCC0_15_-1061.61_-1003.41__M_20180815_182454_1.jpg', out[1])
 # end = datetime.datetime.now()
 # print('本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
 
@@ -673,14 +697,16 @@ def getJPG(path):
 # cv.destroyAllWindows()
 
 
-# -------------------------- 大量测试输出重叠情况的速度 --------------------------
+# -------------------------- 大量测试输出重叠情况的速度^~^ --------------------------
 # start = datetime.datetime.now()
 # s = 0
 
 # for img in getJPG('./testp/tp/q2/'):
 #     s += 1
-#     [dic, shape] = getCoordinate(cv.imread(img), q = 2)
-#     target = np.array([[0, 0], [0, 10], [10, 10], [10, 0]])
+#     [dic, shape] = getCoordinate(cv.imread(img), q=2)
+#     if not dic:
+#         continue
+#     target = np.array([[0, 0], [0, 100], [100, 100], [100, 0]])
 #     re = getQ2Out(dic, target, shape)
 #     print(re)
 
