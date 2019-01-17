@@ -533,14 +533,14 @@ def getCoordinate(img, q, getimg=0, showimg=0):
         return [1, oimg]
 
 
-def getOverlapping(pts1, pts2, shape):
+def getOverlapping(pts1, target, shape):
     im1 = np.zeros(shape, dtype=np.uint8)
     im1 = cv.fillConvexPoly(im1, pts1, 1)
 
-    im2 = np.zeros(shape, dtype=np.uint8)
-    im2 = cv.fillConvexPoly(im2, pts2, 1)
+    target = cv.resize(target, shape, cv.INTER_CUBIC)
+    target = target // 255
 
-    img = im1 + im2
+    img = im1 + target
 
     if (img > 1).any():
         return 1
