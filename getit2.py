@@ -6,13 +6,14 @@ import os
 import datetime
 
 
-def gaussianThreshold(img):
+def gaussianThreshold(img, showimg=0):
     # 图片进行二值化
     gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
     binary = cv.adaptiveThreshold(
         gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 15, 10)
-    # cv.namedWindow('GAUSSIAN', cv.WINDOW_AUTOSIZE)
-    # cv.imshow('GAUSSIAN', binary)
+    if showimg:
+        cv.namedWindow('GAUSSIAN', cv.WINDOW_AUTOSIZE)
+        cv.imshow('GAUSSIAN', binary)
     return binary
 
 
@@ -642,13 +643,18 @@ def getQ2Out(ptdic, target, shape):
     return getReturn(sum_m1, sum_m2, sum_m)
 
 
-def getJPG(path):
+def getJPG(path, li=0):
     # 返回一个文件夹下所有jpg文件名
     list_name = []
     for file in os.listdir(path):
         file_path = os.path.join(path, file)
         if file[-3:].lower() == 'jpg' and not os.path.isdir(file_path):
-            list_name.append(file_path)
+            if not li:
+                list_name.append(file_path)
+            else:
+                list_name.append([path, file])
+        if os.path.isdir(file_path):
+            list_name += getJPG(file_path, li)
     return list_name
 
 
