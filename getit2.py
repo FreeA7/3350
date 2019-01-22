@@ -81,7 +81,7 @@ def getBest(img, m, q):
 
     print('    END:%f' % (list_val[i]))
 
-    if list_val[i] >= 0.7:
+    if list_val[i] >= 0.5:
         return list_val[i], list_loc[i], list_flag[i], list_img[i]
     else:
         return 0, 0, -1, img_t
@@ -660,17 +660,18 @@ def getJPG(path, li=0):
 
 # -------------------------- 处理指定path下所有图片并展示 --------------------------
 # path = './sampTestPic/'
-# for i in getJPG(path):
-#     start = datetime.datetime.now()
-#     [dic, shape] = getCoordinate(cv.imread(i), q=1, showimg=1)
-#     end = datetime.datetime.now()
-#     print(i)
-#     print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
-#     cv.waitKey(0)
-#     cv.destroyAllWindows()
+path = './testp/tp/q1/'
+for i in getJPG(path):
+    start = datetime.datetime.now()
+    [dic, shape] = getCoordinate(cv.imread(i), q=1, showimg=1)
+    end = datetime.datetime.now()
+    print(i)
+    print('    本次匹配费时%fs:' % (((end - start).microseconds) / 1e6))
+    cv.waitKey(0)
+    cv.destroyAllWindows()
 
-# cv.waitKey(0)
-# cv.destroyAllWindows()
+cv.waitKey(0)
+cv.destroyAllWindows()
 
 
 # -------------------------- 处理指定图片并展示 --------------------------
