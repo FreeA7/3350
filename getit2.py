@@ -596,6 +596,8 @@ def getQ1Out(ptdic, target, shape):
             m1.append(ptdic[key][i])
         if getOverlapping(m1, target, shape):
             sum_m1 += 1
+            if sum_m1 > 1:
+                break
 
     for i in range(len(ptdic['Main'])):
         m2 = []
@@ -603,6 +605,8 @@ def getQ1Out(ptdic, target, shape):
             m2.append(ptdic[key][i])
         if getOverlapping(m2, target, shape):
             sum_m2 += 1
+            if sum_m2 > 1:
+                break
 
     for i in range(len(ptdic['Main'])):
         m = []
